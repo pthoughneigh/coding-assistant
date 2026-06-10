@@ -1,4 +1,8 @@
 from pathlib import Path
+import anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # -----------------------------------------------
 # PATHS
@@ -10,6 +14,7 @@ EVAL_RESULTS_PATH = Path(__file__).parent /'outputs'/'eval_results.jsonl'
 # -----------------------------------------------
 # MODEL
 # -----------------------------------------------
+CLIENT = anthropic.Anthropic(timeout=60)
 MODEL_NAME = 'claude-sonnet-4-6'
 
 # -----------------------------------------------
