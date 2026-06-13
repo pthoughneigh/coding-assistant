@@ -7,7 +7,7 @@ def read_file(file_name: str) -> str:
     Read and return the contents of a file from the workspace.
 
     Args:
-        file_name: Path to the file relative to WORKSPACE_PATH.
+        file_name: P Name of a file relative to WORKSPACE_PATH.
 
     Returns:
         The file contents as a UTF-8 string, or an error message if the file
@@ -39,7 +39,7 @@ def write_file(file_name: str, file_content: str) -> str:
     Takes a filename and the full new content as a string, and overwrites the file.
     
     Args:
-        file_name: Path to the file relative to WORKSPACE_PATH.
+        file_name: Name of a file relative to WORKSPACE_PATH.
         file_content: Raw text - new content for a file.
 
     Returns:

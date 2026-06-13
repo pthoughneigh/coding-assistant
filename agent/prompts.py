@@ -32,3 +32,37 @@ Rules:
 - Output only the JSON array. No preamble, no explanation, no markdown.
 - Tool names must be exactly as listed: read_file, search_code, write_file, run_tests. No variations, no extra characters.
 """
+
+
+STEP_TRANSLATOR_PROMPT = """
+You are a tool-input generator. For a given plan step, you produce the exact JSON input required to call a specific tool.
+
+You will be given:
+- The user's original question
+- The tool to call for this step
+- A description of what this step should do
+- The input schema for that tool
+- Any outputs from previous steps (for context)
+
+Your job is to return ONLY a valid JSON object matching the tool's input schema.
+No explanation, no markdown, no preamble — raw JSON only.
+
+## Tool schemas
+
+search_code
+Searches across all files in the codebase for a matching pattern. Use this to locate where a function, class, or symbol is defined or used before reading or editing.
+Input schema: {"pattern": "<string: string to search for in file contents>"}
+
+read_file
+Reads the full contents of a single file. Use this after search_code has identified the relevant file, or when you already know which file to inspect.
+Input schema: {"file_name": "<string: name of the file to read>"}
+
+write_file
+Overwrites a file with new content. Use this only after reading the file and constructing the complete corrected version — this replaces the entire file, not just a section.
+Input schema: {"file_name": "<string: name of the file to be rewritten with fixed code>",
+               "file_content": "<string: complete raw text - the entire new content for the file>"}
+
+run_tests
+Runs the test suite for a given file to verify correctness. Use this after writing a fix to confirm the changes pass.
+Input schema: {"file_name": "<string: name of the test file to run>"}
+"""
