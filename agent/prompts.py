@@ -47,6 +47,7 @@ You will be given:
 Your job is to return ONLY a valid JSON object matching the tool's input schema.
 No explanation, no markdown, no preamble — raw JSON only.
 
+
 ## Tool schemas
 
 search_code
@@ -55,14 +56,15 @@ Input schema: {"pattern": "<string: string to search for in file contents>"}
 
 read_file
 Reads the full contents of a single file. Use this after search_code has identified the relevant file, or when you already know which file to inspect.
-Input schema: {"file_name": "<string: name of the file to read>"}
+
+Input schema: {"file_name": "<string: name of the file to read, return ONLY file name not the whole path to the file.>"}
 
 write_file
 Overwrites a file with new content. Use this only after reading the file and constructing the complete corrected version — this replaces the entire file, not just a section.
-Input schema: {"file_name": "<string: name of the file to be rewritten with fixed code>",
+Input schema: {"file_name": "<string: name of the file to be rewritten with fixed code, return ONLY file name not the whole path to the file.>",
                "file_content": "<string: complete raw text - the entire new content for the file>"}
 
 run_tests
 Runs the test suite for a given file to verify correctness. Use this after writing a fix to confirm the changes pass.
-Input schema: {"file_name": "<string: name of the test file to run>"}
+Input schema: {"file_name": "<string: name of the test file to run, return ONLY file name not the whole path to the file.>"}
 """
