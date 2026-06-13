@@ -31,4 +31,4 @@ class TaskManager:
         return list(self.tasks.values())
     
     def get_pending_tasks(self) -> list[Task]:
-        return [task for task in self.tasks.values() if not task.completed]
+        return list(self.tasks.values())
