@@ -1,5 +1,7 @@
+import textwrap
 from datetime import datetime
 from typing import Any
+
 class C:
     RESET   = "\033[0m"
     BOLD    = "\033[1m"
@@ -15,7 +17,8 @@ class C:
     GOLD    = "\033[38;5;178m"  # warm gold          — Planner
     RUST    = "\033[38;5;130m"  # burnt rust         — Executor  
     CORAL   = "\033[38;5;209m"  # light coral/salmon — Step Translator
-    CREAM   = "\033[38;5;223m"
+    CREAM   = "\033[38;5;223m"  # warm cream         — labels/headings
+    SAGE    = "\033[38;5;108m"  # muted green        — Reflector
 
     def __init__(self):
         raise TypeError("C is a namespace, not meant to be instantiated")
@@ -33,7 +36,11 @@ TOOL_COLORS = {
 # ── PLANNER───────────────────────────────────────────────────────────────────
 def log_planner_start(question: str) -> None:
     print(f"{C.ORANGE}  ┌ {C.GOLD}PLANNER{C.RESET} Started at: {_ts()}")
-    print(f"{C.ORANGE}  │ {C.CREAM}Question:{C.WHITE} {question}")
+    print(f"{C.ORANGE}  │ {C.CREAM}Question:{C.RESET}")
+    for paragraph in question[:500].splitlines():
+        for line in textwrap.wrap(paragraph, width=100) or [paragraph]:
+            print(f"{C.ORANGE}  │   {C.RESET}{line}{C.RESET}")
+    print(f"{C.ORANGE}  │{C.RESET}")
 
 def log_planner_result(steps: list[dict]) -> None:
     print(f"{C.ORANGE}  │{C.CREAM} Generated: {C.RESET}{C.WHITE}{len(steps)} steps:{C.RESET}")
@@ -47,23 +54,25 @@ def log_planner_end() -> None:
 
 
 # ── STEP TRANSLATOR────────────────────────────────────────────────────────────
-def log_translator_start(step: dict[str, Any], user_message: str):
+def log_translator_start(step: dict[str, Any], user_message: str) -> None:
     print(f"{C.ORANGE}  ┌ {C.CORAL}Step translator{C.RESET} Started at: {_ts()}")
     tool_color = TOOL_COLORS.get(step['tool'], C.WHITE)
     print(f"{C.ORANGE}  │{C.RESET}   {C.DIM}Step{step['step']:>2}.{C.RESET} [{tool_color}{step['tool']}{C.RESET}]")
     print(f"{C.ORANGE}  │ {C.CREAM}User message: {C.ORANGE}\n  │   {C.RESET}{user_message[:300].replace('\n', f'{C.ORANGE}\n  │   {C.RESET}')}")
   
 
-def log_translator_result(inputs: dict[str, Any]):
-    print(f"{C.ORANGE}  │ {C.CREAM}Step translator output: {C.RESET}")
-    for i in inputs.keys():
-        print(f"{C.ORANGE}  │   {C.CYAN}{i}: - {C.ORANGE}\n  │{C.GREEN}\t{inputs[i][:200].replace('\n', f'{C.ORANGE}\n  │   {C.GREEN}\t')}")
+def log_translator_result(inputs: dict[str, Any]) -> None:
+    print(f"{C.ORANGE}  │ {C.CREAM}Step translator output:{C.RESET}")
+    for key, value in inputs.items():
+        print(f"{C.ORANGE}  │   {C.CYAN}{key}:{C.RESET}")
+        for line in str(value)[:200].splitlines():
+            print(f"{C.ORANGE}  │     {C.GREEN}{line}{C.RESET}")
     print(f"{C.ORANGE}  │ {C.CORAL}Step translator {C.WHITE}finished at:{C.RESET} {_ts()}")
     print()
 
 
 # ── EXECUTOR────────────────────────────────────────────────────────────────────
-def log_executor_start(question: str) -> None:
+def log_executor_start() -> None:
     print(f"{C.ORANGE}  ┌ {C.RUST} Executor{C.RESET} Started at: {_ts()}")
     print()
 
@@ -72,12 +81,27 @@ def log_executor_end(result: str) -> None:
     print(f"{C.ORANGE}  │ {C.RUST}Executor {C.WHITE}finished at:{C.RESET}  {_ts()}")
     print()
 
+# ── REFLECTOR────────────────────────────────────────────────────────────────────
+def log_reflector_start() -> None:
+    print(f"{C.ORANGE}  ┌ {C.SAGE} Reflector{C.RESET} Started at: {_ts()}")
+    print()
+
+def log_reflector_user_message(user_message: str) -> None:
+    print(f"{C.ORANGE}  │ {C.CREAM}User message: {C.ORANGE}\n  │   {C.RESET}{user_message[:300].replace('\n', f'{C.ORANGE}\n  │   {C.RESET}')}")
+
+def log_reflector_end(result: dict[str, Any]) -> None:
+    for key, value in result.items():
+        print(f"{C.ORANGE}  │   {C.CYAN}{key}:{C.RESET}")
+        for line in str(value)[:200].splitlines():
+            print(f"{C.ORANGE}  │     {C.GREEN}{line}{C.RESET}")
+    print(f"{C.ORANGE}  │ {C.SAGE}Reflector {C.WHITE}finished at:{C.RESET} {_ts()}")
+    print()
 
 # ── AGENT────────────────────────────────────────────────────────────────────────
-def log_agent_start():
+def log_agent_start() -> None:
     print(f"{C.ORANGE}  ┌ Agent{C.RESET} Started at: {_ts()}")
     print()
 
-def log_agent_end():
+def log_agent_end() -> None:
     print(f"{C.ORANGE}  │ Agent{C.RESET} {C.WHITE}finished at: {_ts()}")
     print(f"{C.ORANGE}  └{'─' * 60}{C.RESET}")

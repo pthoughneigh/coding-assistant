@@ -7,7 +7,7 @@ def read_file(file_name: str) -> str:
     Read and return the contents of a file from the workspace.
 
     Args:
-        file_name: P Name of a file relative to WORKSPACE_PATH.
+        file_name: Name of a file relative to WORKSPACE_PATH.
 
     Returns:
         The file contents as a UTF-8 string, or an error message if the file
@@ -62,7 +62,7 @@ def write_file(file_name: str, file_content: str) -> str:
     except IsADirectoryError:
         return f"Error: '{file_name}' is a directory, not a file"
     except UnicodeEncodeError:
-        return f"Error: '{file_name}' could not be decoded as UTF-8 — may be a binary file"
+        return f"Error: '{file_name}' could not be encoded as UTF-8 — content may contain unsupported characters"
     except OSError as e:
         return f"Error: could not write to '{file_name}' — {e}"
     

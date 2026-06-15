@@ -6,7 +6,9 @@ import anthropic
 
 from agent.tools import search_code, read_file, write_file, run_tests
 from agent.prompts import STEP_TRANSLATOR_PROMPT
-from config import CLIENT, MODEL_NAME
+from agent.reflector import reflector
+from agent.planner import planner
+from config import CLIENT, MODEL_NAME, MAX_REPLANS
 from observability.logger import (
     log_translator_start,
     log_translator_result,
@@ -58,7 +60,7 @@ def run_tool(tool_name: str, inputs: dict[str, Any]) -> str:
 def step_translator(
     question: str,
     step: dict[str, Any],
-    prior_outputs: list[str],
+    prior_outputs: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """
     Translate a single plan step into a concrete tool-input dict via an LLM call.
@@ -97,12 +99,14 @@ def step_translator(
                     for o in prior_outputs
                 )
     
+    prior_steps = f"Prior step outputs:\n{context}" if context else "No prior steps yet."
+
     user_message = (
                     f"User question: {question}\n\n"
                     f"Current step {step['step']}: call tool \"{step['tool']}\"\n"
                     f"Step description: {step['description']}\n\n"
-                    + (f"Prior step outputs:\n{context}" if context else "No prior steps yet.")
-                    + f"\n\nReturn the JSON input for the \"{step['tool']}\" tool."
+                    f"{prior_steps}\n\n"
+                    + f"Return the JSON input for the \"{step['tool']}\" tool."
                 )
     
     log_translator_start(step, user_message=user_message)
@@ -148,42 +152,73 @@ def step_translator(
 
 def executor(steps: list[dict], question: str) -> str:
     """
-    Executes a sequence of tool-based steps to answer a question.
+    Execute a sequence of tool-based steps to answer a question.
 
     Iterates over a plan of steps, translating each into tool arguments using
-    prior context, running the tool, and accumulating outputs. Returns the
-    result of the final step.
+    prior context, running the tool, and accumulating outputs. After each step
+    (except ``run_tests``), a reflector judges the result and may trigger a
+    replan — replacing the remaining steps with a revised plan and restarting
+    the loop. Raises an error if replanning occurs more than ``MAX_REPLANS``
+    times. Returns the result of the final step.
 
     Args:
-        steps (list[dict]): A non-empty list of step dicts, each containing
-            at least:
-                - ``step`` (int): A label or description of the step.
-                - ``tool`` (str): The name of the tool to invoke.
-        question (str): The original question driving the execution. Must be
+        steps: A non-empty list of step dicts, each containing at least:
+            - ``step`` (int): The step index.
+            - ``tool`` (str): The name of the tool to invoke.
+            - ``description`` (str): What the step is meant to do.
+        question: The original question driving the execution. Must be
             a non-empty string.
 
     Returns:
-        str: The output of the last step's tool call.
+        The output of the last step's tool call.
 
     Raises:
         ValueError: If ``steps`` is empty or ``question`` is not a non-empty
             string.
+        RuntimeError: If replanning is triggered more than ``MAX_REPLANS``
+            times, indicating the executor could not make progress.
     """
     prior_outputs = []
+    replan_count = 0
     
     if not steps:
-        raise ValueError(f"Steps must be a non-emtpy list, got: {repr(steps)}")
+        raise ValueError(f"Steps must be a non-empty list, got: {repr(steps)}")
     
     if not isinstance(question, str) or not question.strip():
         raise ValueError(f"Question must be a non-empty string, got: {repr(question)}")
     
-    log_executor_start(question=question)
+    log_executor_start()
     
-    for step in steps:
-        arguments = step_translator(question=question, step=step, prior_outputs=prior_outputs)
-        result = run_tool(step['tool'], arguments)
-        prior_outputs.append({'step': step['step'], 'tool': step['tool'], 'output': result})
-        
+    while True: 
+        for step in steps:
+            arguments = step_translator(question=question, step=step, prior_outputs=prior_outputs)
+            result = run_tool(step['tool'], arguments)
+            prior_outputs.append({'step': step['step'], 'tool': step['tool'], 'output': result})
+            if step['tool'] != 'run_tests':
+                verdict = reflector(question=question, step=step, prior_outputs=prior_outputs, curr_step_result=result)
+                if verdict['decision'] == 'replan':
+                    replan_count += 1
+                    if replan_count > MAX_REPLANS:
+                        raise RuntimeError(
+                                f"Executor gave up after {MAX_REPLANS} replans. "
+                                f"Last failure: {verdict['reason']}")
+                    steps = planner(
+                            question
+                            + f"\n\nNote for replanner: {verdict['reason']}\n\n"
+                            + "Steps completed so far:\n"
+                            + "\n".join(
+                                f"  {o['step']}. [{o['tool']}] output: {o['output'][:200]}"
+                                for o in prior_outputs
+                            )
+                            + "\n\nReturn ONLY the remaining steps still needed. Do not repeat completed steps.",
+                    )
+                    if not steps:
+                        raise RuntimeError(f"Replanner returned an empty step list - {verdict['reason']}")
+                    
+                    break
+        else:
+            break
+
     log_executor_end(result=result)
 
     return result

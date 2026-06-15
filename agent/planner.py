@@ -13,7 +13,7 @@ from observability.logger import (
 
 def planner(question: str) -> list[dict]:
     """
-    Sends a question to the Claude API and parses the response into a list of plan steps.
+    Send a question to the LLM and parse the response into a list of plan steps.
 
     Constructs a single-turn message using the provided question, calls the
     Claude API with a predefined planner system prompt, and extracts a JSON
@@ -39,15 +39,13 @@ def planner(question: str) -> list[dict]:
         raise ValueError(f"Question must be a non-empty string, got: {repr(question)}")
 
     log_planner_start(question)
-
-    messages = [{'role': 'user', 'content': question}]
-
+    
     try:
         response = CLIENT.messages.create(
             model=MODEL_NAME,
             max_tokens=1024,
             system=PLANNER_PROMPT,
-            messages=messages
+            messages=[{'role': 'user', 'content': question}]
         )
 
     except anthropic.BadRequestError as e:
