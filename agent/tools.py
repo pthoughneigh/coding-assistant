@@ -18,6 +18,15 @@ def read_file(file_name: str) -> str:
         Nothing — all exceptions are caught and returned as error strings.
     """
     path = WORKSPACE_PATH / file_name
+
+    try:
+        workspace = WORKSPACE_PATH.resolve()
+        path = path.resolve()
+        if not path.is_relative_to(workspace):
+            return f"Error: '{file_name}' is outside the workspace directory"
+    except OSError as e:
+        return f"Error: could not resolve path for '{file_name}' — {e}"
+    
     try:
         with open(path, 'r', encoding='utf-8') as file:
             file_content = file.read()
@@ -51,6 +60,15 @@ def write_file(file_name: str, file_content: str) -> str:
         Nothing — all exceptions are caught and returned as error strings.
     """
     path = WORKSPACE_PATH / file_name
+
+    try:
+        workspace = WORKSPACE_PATH.resolve()
+        path = path.resolve()
+        if not path.is_relative_to(workspace):
+            return f"Error: '{file_name}' is outside the workspace directory"
+    except OSError as e:
+        return f"Error: could not resolve path for '{file_name}' — {e}"
+    
     try:
         with open(path, 'w', encoding='utf-8') as file:
             file.write(file_content)
@@ -83,9 +101,19 @@ def run_tests(file_name: str) -> str:
     Raises:
         Nothing — all exceptions are caught and returned as error strings.
     """
+    path = WORKSPACE_PATH / file_name
+    
+    try:
+        workspace = WORKSPACE_PATH.resolve()
+        path = path.resolve()
+        if not path.is_relative_to(workspace):
+            return f"Error: '{file_name}' is outside the workspace directory"
+    except OSError as e:
+        return f"Error: could not resolve path for '{file_name}' — {e}"
+
     codes = {0: 'passed', 1: 'tests failed', 2: 'interrupted', 3: 'internal error', 4: 'usage error', 5: 'no tests found'}
     try:
-        sb = subprocess.run(['pytest', str(WORKSPACE_PATH / file_name)], capture_output=True, encoding='utf-8')
+        sb = subprocess.run(['pytest', str(path)], capture_output=True, encoding='utf-8')
         code_meaning = codes.get(sb.returncode, 'unknown')
         return f"Result: {code_meaning}\nOutput:\n{sb.stdout}\nErrors:\n{sb.stderr}"
     except FileNotFoundError:
@@ -131,6 +159,10 @@ def search_code(pattern: str) -> str:
         return f"Error: could not search '{WORKSPACE_PATH}' — {e}"
     
     if matches:
-        search_result = "\n".join(f"Path: {m['file']}\n{'\n'.join(m['lines'])}" for m in matches)
+        parts = []
+        for m in matches:
+            joined_lines = "\n".join(m['lines'])
+            parts.append(f"Path: {m['file']}\n{joined_lines}")
+        search_result = "\n".join(parts)
 
     return search_result

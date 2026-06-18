@@ -1,14 +1,28 @@
 from agent.agent import agent
+
 def cli() -> None:
     while True:
-        question = input("user: ")
+        try:
+            question = input("user: ")
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting.")
+            break
+
         if question.upper() == 'QUIT':
             break
         if not question.strip():
             continue
-    
-        agent(question=question)
 
-        
+        try:
+            agent(question=question)
+        except KeyboardInterrupt:
+            print("\nInterrupted.")
+            break
+        except (ValueError, RuntimeError) as e:
+            print(f"Error: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+
+
 if __name__ == '__main__':
     cli()

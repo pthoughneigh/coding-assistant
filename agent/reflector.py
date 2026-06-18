@@ -81,8 +81,7 @@ def reflector(question: str, step: dict[str, Any], prior_outputs: list[dict[str,
         raise RuntimeError(f"Failed to connect to API: {e}")
     except anthropic.APIStatusError as e:
         raise RuntimeError(f"API returned error status {e.status_code}: {e}")
-    
-    
+
 
     try:
         raw = response.content[0].text.strip()
@@ -96,13 +95,13 @@ def reflector(question: str, step: dict[str, Any], prior_outputs: list[dict[str,
        raise ValueError("Reflector returned string that didn't contain a valid JSON object")
     
     try:
-        response = json.loads(raw)
+        verdict = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ValueError(f"Reflector returned invalid JSON: {e}\nRaw output:\n{raw}")
     
     
-    if response.keys() == {'decision', 'reason'} and response['decision'] in ('continue', 'replan'):
-        log_reflector_end(response)
-        return response
+    if verdict.keys() == {'decision', 'reason'} and verdict['decision'] in ('continue', 'replan'):
+        log_reflector_end(verdict)
+        return verdict
     else:
-        raise ValueError(f"Reflector returned invalid dictionary - {response}")
+        raise ValueError(f"Reflector returned invalid dictionary - {verdict}")

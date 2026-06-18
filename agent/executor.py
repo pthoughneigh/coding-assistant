@@ -1,9 +1,11 @@
 import json
 import re
-from typing import Any
+import time
 
 import anthropic
 
+from typing import Any, Optional
+from observability.tracer import Tracer
 from agent.tools import search_code, read_file, write_file, run_tests
 from agent.prompts import STEP_TRANSLATOR_PROMPT
 from agent.reflector import reflector
@@ -150,7 +152,7 @@ def step_translator(
     return arguments
 
 
-def executor(steps: list[dict], question: str) -> str:
+def executor(steps: list[dict], question: str, tracer: Optional[Tracer] = None) -> str:
     """
     Execute a sequence of tool-based steps to answer a question.
 
@@ -168,6 +170,8 @@ def executor(steps: list[dict], question: str) -> str:
             - ``description`` (str): What the step is meant to do.
         question: The original question driving the execution. Must be
             a non-empty string.
+        tracer: Optional tracer for logging execution events. 
+            Defaults to a no-op tracer if not provided.
 
     Returns:
         The output of the last step's tool call.
@@ -178,6 +182,7 @@ def executor(steps: list[dict], question: str) -> str:
         RuntimeError: If replanning is triggered more than ``MAX_REPLANS``
             times, indicating the executor could not make progress.
     """
+    tracer = tracer or Tracer(filepath=None, run_id=None)
     prior_outputs = []
     replan_count = 0
     
@@ -191,17 +196,37 @@ def executor(steps: list[dict], question: str) -> str:
     
     while True: 
         for step in steps:
+            tracer.log_step_start(step=step)
+            
             arguments = step_translator(question=question, step=step, prior_outputs=prior_outputs)
+            
+            tracer.log_translator_result(step_num=step['step'], tool=step['tool'], tool_input=arguments)
+
+            t0_tool = time.time()
             result = run_tool(step['tool'], arguments)
+            elapsed = time.time() - t0_tool
+
+            tracer.log_tool_result(step['step'], step['tool'], output=result, elapsed=elapsed)
+
             prior_outputs.append({'step': step['step'], 'tool': step['tool'], 'output': result})
+
             if step['tool'] != 'run_tests':
                 verdict = reflector(question=question, step=step, prior_outputs=prior_outputs, curr_step_result=result)
+
+                tracer.log_reflector_verdict(step_num=step['step'], verdict=verdict)
+                
                 if verdict['decision'] == 'replan':
                     replan_count += 1
                     if replan_count > MAX_REPLANS:
+
+                        tracer.log_executor_gave_up(replan_count=replan_count, reason=verdict['reason'])
+                        
                         raise RuntimeError(
                                 f"Executor gave up after {MAX_REPLANS} replans. "
                                 f"Last failure: {verdict['reason']}")
+                    
+                    tracer.log_replan_triggered(replan_count=replan_count, reason=verdict['reason'], prior_outputs=prior_outputs)
+                    
                     steps = planner(
                             question
                             + f"\n\nNote for replanner: {verdict['reason']}\n\n"
@@ -210,7 +235,12 @@ def executor(steps: list[dict], question: str) -> str:
                                 f"  {o['step']}. [{o['tool']}] output: {o['output'][:200]}"
                                 for o in prior_outputs
                             )
-                            + "\n\nReturn ONLY the remaining steps still needed. Do not repeat completed steps.",
+                            + f"\n\nReturn ONLY the remaining steps still needed. Do not repeat completed steps."
+                            + f" Start step numbering from {len(prior_outputs) + 1}."
+                            + " The first step does not need to be read_file or search_code — continue from where the plan left off.",
+                            tracer=tracer,
+                            is_replan=True
+                            
                     )
                     if not steps:
                         raise RuntimeError(f"Replanner returned an empty step list - {verdict['reason']}")

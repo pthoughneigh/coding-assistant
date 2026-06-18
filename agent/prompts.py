@@ -153,7 +153,7 @@ Rules for "replan":
 - Content unrelated to the bug (reads the content, cross references with the question) (read_file)
 - Same tests still failing — pytest output says FAILED (run_tests)
 - Different tests now failing — regression visible in pytest output (run_tests)
-- Zero tests collected, exit code 0 — "no tests ran" / "collected 0 items" visible in output (run_tests)
+- Zero tests collected — "Result: no tests found" visible in output, or "collected 0 items" in the pytest output (run_tests)
 - If given completed steps, return only the remaining steps needed — do not repeat what has already been done.
 
 On "continue": reason should confirm what was established.
