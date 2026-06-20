@@ -5,33 +5,33 @@ starting_code_buggy = (EVAL_FIXTURES_PATH / 'task_manager_buggy.py').read_text(e
 starting_code_correct = (EVAL_FIXTURES_PATH / 'task_manager_correct.py').read_text(encoding="utf-8")
 
 EVAL_CASES = [
-    #{
-    #    "id": "q1",
-    #    "question": "Fix the bug in the task_manager.py",
-    #    "starting_code": starting_code_buggy,
-    #    "expect_success": True,
-    #},
-    #
-    #{
-    #    "id": "q2",
-    #    "question": "Can you find a bug in task_manager.py",
-    #    "starting_code": starting_code_buggy,
-    #    "expect_success": True,
-    #},
-    #
-    #{
-    #    "id": "q3",
-    #    "question": "What is the bug in manager_of_tasks.py",
-    #    "starting_code": starting_code_buggy,
-    #    "expect_success": True,
-    #},
-#
-    #{
-    #    "id": "q4",
-    #    "question": "Where is the bug in web_scraper.py",
-    #    "starting_code": starting_code_buggy,
-    #    "expect_success": False,
-    #},
+    {
+        "id": "q1",
+        "question": "Fix the bug in the task_manager.py",
+        "starting_code": starting_code_buggy,
+        "expect_success": True,
+    },
+    
+    {
+        "id": "q2",
+        "question": "Can you find a bug in task_manager.py",
+        "starting_code": starting_code_buggy,
+        "expect_success": True,
+    },
+    
+    {
+        "id": "q3",
+        "question": "What is the bug in manager_of_tasks.py",
+        "starting_code": starting_code_buggy,
+        "expect_success": True,
+    },
+
+    {
+        "id": "q4",
+        "question": "Where is the bug in web_scraper.py",
+        "starting_code": starting_code_buggy,
+        "expect_success": False,
+    },
 
     # q5 tests regression detection, not bug-fixing: starting_code is already
     # correct (9/9 passing). The agent is asked to add a feature likely to
