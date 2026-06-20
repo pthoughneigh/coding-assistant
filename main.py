@@ -1,4 +1,5 @@
 from agent.agent import agent
+from evals.harness import run_eval
 
 def cli() -> None:
     while True:

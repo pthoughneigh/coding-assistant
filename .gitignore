@@ -21,3 +21,7 @@ Thumbs.db
 
 # Local reference only
 ansi_reference.md
+
+# Outputs
+outputs/traces.jsonl
+outputs/eval_results.jsonl

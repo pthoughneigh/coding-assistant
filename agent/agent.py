@@ -1,13 +1,14 @@
 import uuid
 import time 
 
+from typing import Optional
 from config import TRACES_PATH
 from observability.tracer import Tracer
 from agent.planner import planner
 from agent.executor import executor
 from observability.logger import log_agent_start, log_agent_end
 
-def agent(question: str) -> str:
+def agent(question: str, run_info: Optional[dict] = None) -> str:
     """
     Runs a question through the planner and executor to produce an answer.
 
@@ -16,6 +17,11 @@ def agent(question: str) -> str:
 
     Args:
         question (str): The question to answer. Must be a non-empty string.
+        run_info (Optional[dict]): If provided, this function writes the
+            generated `run_id` into it under the key `'run_id'`, so the
+            caller can later look up this run's trace events in
+            TRACES_PATH. Has no effect on the function's behavior or
+            return value. Defaults to None.
 
     Returns:
         str: The final answer produced after executing all planned steps.
@@ -28,6 +34,8 @@ def agent(question: str) -> str:
     
     t0 = time.time()
     run_id = uuid.uuid4().hex[:8]
+    if run_info is not None:
+        run_info['run_id'] = run_id
 
     log_agent_start()
 

@@ -10,6 +10,7 @@ load_dotenv()
 WORKSPACE_PATH = Path(__file__).parent /'workspace'
 TRACES_PATH = Path(__file__).parent /'outputs'/'traces.jsonl'
 EVAL_RESULTS_PATH = Path(__file__).parent /'outputs'/'eval_results.jsonl'
+EVAL_FIXTURES_PATH = Path(__file__).parent /'evals'/'fixtures'
 
 # -----------------------------------------------
 # MODEL

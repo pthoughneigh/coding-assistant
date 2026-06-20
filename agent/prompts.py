@@ -63,6 +63,8 @@ write_file
 Overwrites a file with new content. Use this only after reading the file and constructing the complete corrected version — this replaces the entire file, not just a section.
 Input schema: {"file_name": "<string: name of the file to be rewritten with fixed code, return ONLY file name not the whole path to the file.>",
                "file_content": "<string: complete raw text - the entire new content for the file>"}
+    IMPORTANT: file_content must be valid inside a JSON string. If the file has multiple lines, encode each line break as the two characters \\n — never insert an actual newline inside the string. 
+               The output you return must remain valid JSON when parsed by a standard JSON parser.
 
 run_tests
 Runs the test suite for a given file to verify correctness. Use this after writing a fix to confirm the changes pass.
@@ -119,11 +121,11 @@ What healthy output looks like per tool:
            Output:
            ============================= test session starts =============================
            platform win32 -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0
-           rootdir: D:\Documents\ai_projects\Phase_3\coding_assistant
+           rootdir: D:\\Documents\\ai_projects\\Phase_3\\coding_assistant
            plugins: anyio-4.13.0
            collected 9 items
 
-           workspace\test_task_manager.py .........                                 [100%]
+           workspace\\test_task_manager.py .........                                 [100%]
 
            ============================== 9 passed in 0.07s ==============================
 
