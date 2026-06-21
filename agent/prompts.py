@@ -31,6 +31,8 @@ Rules:
 - Include only the steps strictly needed — no redundant steps.
 - Output only the JSON array. No preamble, no explanation, no markdown.
 - Tool names must be exactly as listed: read_file, search_code, write_file, run_tests. No variations, no extra characters.
+- Never modify files matching test_*.py 
+- Never edit the file being verified by run_tests — if tests fail, the bug is in the implementation, not the test 
 """
 
 
@@ -156,7 +158,12 @@ Rules for "replan":
 - Same tests still failing — pytest output says FAILED (run_tests)
 - Different tests now failing — regression visible in pytest output (run_tests)
 - Zero tests collected — "Result: no tests found" visible in output, or "collected 0 items" in the pytest output (run_tests)
+- Do not replan solely because the implementation doesn't literally reuse words from the user's question 
+  (e.g. the user said "title" but the fix uses a differently-named field) — if it satisfies the question's actual intent and passes the other rules above 
+  (no errors, no regressions, valid syntax, tests genuinely exercise the changed behavior), that is sufficient. 
+  Reserve replan for a fix that is functionally incomplete or wrong, not one that is merely differently worded.
 - If given completed steps, return only the remaining steps needed — do not repeat what has already been done.
+- write_file targeted a test file (test_*.py, or the file run_tests checks) — replan to fix the implementation instead
 
 On "continue": reason should confirm what was established.
 On "replan": reason must be specific — describe exactly what went wrong and what

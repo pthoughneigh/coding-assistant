@@ -1,4 +1,8 @@
+"""
+This is a deliberately buggy version used by the eval harness.
+"""
 from dataclasses import dataclass
+
 
 @dataclass
 class Task:

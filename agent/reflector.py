@@ -54,11 +54,13 @@ def reflector(question: str, step: dict[str, Any], prior_outputs: list[dict[str,
     prior_steps = f"Prior step outputs:\n{context}" if context else "No prior steps yet."
 
     user_message = (
-        f"User question: {question}\n\n"
+        f"Original user request (for context only — the plan below already interprets it; "
+        f"do not re-derive intent from this text): {question}\n\n"
         f"{prior_steps}\n\n"
         f"Current step {step['step']}: call tool \"{step['tool']}\"\n"
         f"Step description: {step['description']}\n\n"
-        f"Current step result: {curr_step_result}\n\n"
+        f"Judge this step's result against its description and the rules — "
+        f"not against a literal re-reading of the original request:\n{curr_step_result}\n\n"
         f"Return a valid JSON object with exactly two keys: decision and reason"
     )
 

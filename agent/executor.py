@@ -58,7 +58,30 @@ def run_tool(tool_name: str, inputs: dict[str, Any]) -> str:
         return tool(**inputs)
     except KeyError as e:
         return f"Error: missing required input field: - {e}"
-    
+
+def test_file_was_written(prior_outputs: list[dict[str, Any]]) -> bool:
+    """
+    Check whether any write_file step in this run targeted a test file.
+
+    Scans ``prior_outputs`` for ``write_file`` entries whose recorded
+    ``file_name`` starts with ``test_``. This is a purely mechanical check —
+    no LLM call — used to decide whether a passing ``run_tests`` result can
+    be trusted without further reflection.
+
+    Args:
+        prior_outputs: Outputs from all steps completed so far. Each entry is
+            a dict that may contain a ``file_name`` key (set only for
+            ``write_file`` steps; ``None`` otherwise).
+
+    Returns:
+        True if any ``write_file`` step's ``file_name`` starts with
+        ``test_``, False otherwise.
+    """
+    return any(
+        o.get('file_name') and o['file_name'].startswith('test_')
+        for o in prior_outputs
+    )
+
 def step_translator(
     question: str,
     step: dict[str, Any],
@@ -157,11 +180,11 @@ def executor(steps: list[dict], question: str, tracer: Optional[Tracer] = None) 
     Execute a sequence of tool-based steps to answer a question.
 
     Iterates over a plan of steps, translating each into tool arguments using
-    prior context, running the tool, and accumulating outputs. After each step
-    (except ``run_tests``), a reflector judges the result and may trigger a
-    replan — replacing the remaining steps with a revised plan and restarting
-    the loop. Raises an error if replanning occurs more than ``MAX_REPLANS``
-    times. Returns the result of the final step.
+    prior context, running the tool, and accumulating outputs. After every
+    step, a reflector judges the result and may trigger a replan — replacing
+    the remaining steps with a revised plan and restarting the loop. Raises
+    an error if replanning occurs more than ``MAX_REPLANS`` times. Returns
+    the result of the final step.
 
     Args:
         steps: A non-empty list of step dicts, each containing at least:
@@ -208,44 +231,52 @@ def executor(steps: list[dict], question: str, tracer: Optional[Tracer] = None) 
 
             tracer.log_tool_result(step['step'], step['tool'], output=result, elapsed=elapsed)
 
-            prior_outputs.append({'step': step['step'], 'tool': step['tool'], 'output': result})
+            output = result
+            file_name = None
+            if step['tool'] == 'write_file' and not result.strip().startswith("Error:"):
+                output = f"{result}\n\nFile content written:\n{arguments['file_content']}"
+                file_name = arguments['file_name']
 
-            if step['tool'] != 'run_tests':
+            prior_outputs.append({'step': step['step'], 'tool': step['tool'], 'output': output, 'file_name': file_name})
+
+            if (step['tool'] == 'run_tests' and result.strip().startswith("Result: passed") and not test_file_was_written(prior_outputs)):
+                verdict = {'decision': 'continue', 'reason': 'All tests passed and the test file was never modified — auto-continued without reflection.'}
+            else:
                 verdict = reflector(question=question, step=step, prior_outputs=prior_outputs, curr_step_result=result)
 
-                tracer.log_reflector_verdict(step_num=step['step'], verdict=verdict)
-                
-                if verdict['decision'] == 'replan':
-                    replan_count += 1
-                    if replan_count > MAX_REPLANS:
+            tracer.log_reflector_verdict(step_num=step['step'], verdict=verdict)
+            
+            if verdict['decision'] == 'replan':
+                replan_count += 1
+                if replan_count > MAX_REPLANS:
 
-                        tracer.log_executor_gave_up(replan_count=replan_count, reason=verdict['reason'])
+                    tracer.log_executor_gave_up(replan_count=replan_count, reason=verdict['reason'])
+                    
+                    raise RuntimeError(
+                            f"Executor gave up after {MAX_REPLANS} replans. "
+                            f"Last failure: {verdict['reason']}")
+                
+                tracer.log_replan_triggered(replan_count=replan_count, reason=verdict['reason'], prior_outputs=prior_outputs)
+                
+                steps = planner(
+                        question
+                        + f"\n\nNote for replanner: {verdict['reason']}\n\n"
+                        + "Steps completed so far:\n"
+                        + "\n".join(
+                            f"  {o['step']}. [{o['tool']}] output: {o['output'][:3000]}"
+                            for o in prior_outputs
+                        )
+                        + f"\n\nReturn ONLY the remaining steps still needed. Do not repeat completed steps."
+                        + f" Start step numbering from {len(prior_outputs) + 1}."
+                        + " The first step does not need to be read_file or search_code — continue from where the plan left off.",
+                        tracer=tracer,
+                        is_replan=True
                         
-                        raise RuntimeError(
-                                f"Executor gave up after {MAX_REPLANS} replans. "
-                                f"Last failure: {verdict['reason']}")
-                    
-                    tracer.log_replan_triggered(replan_count=replan_count, reason=verdict['reason'], prior_outputs=prior_outputs)
-                    
-                    steps = planner(
-                            question
-                            + f"\n\nNote for replanner: {verdict['reason']}\n\n"
-                            + "Steps completed so far:\n"
-                            + "\n".join(
-                                f"  {o['step']}. [{o['tool']}] output: {o['output'][:200]}"
-                                for o in prior_outputs
-                            )
-                            + f"\n\nReturn ONLY the remaining steps still needed. Do not repeat completed steps."
-                            + f" Start step numbering from {len(prior_outputs) + 1}."
-                            + " The first step does not need to be read_file or search_code — continue from where the plan left off.",
-                            tracer=tracer,
-                            is_replan=True
-                            
-                    )
-                    if not steps:
-                        raise RuntimeError(f"Replanner returned an empty step list - {verdict['reason']}")
-                    
-                    break
+                )
+                if not steps:
+                    raise RuntimeError(f"Replanner returned an empty step list - {verdict['reason']}")
+                
+                break
         else:
             break
 

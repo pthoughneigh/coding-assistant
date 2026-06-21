@@ -1,10 +1,12 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 
 @dataclass
 class Task:
     task_id: int
     title: str
     completed: bool = False
+    created_at: datetime = field(default_factory=datetime.now)
 
 class TaskManager:
     def __init__(self):
